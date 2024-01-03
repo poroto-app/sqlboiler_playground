@@ -6,15 +6,23 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 	"log"
 	"poroto.app/sns/models"
+	"time"
 )
 
 const (
-	numUser      = 10000
-	numPost      = 1000
+	numUser      = 1000
+	numPost      = 100
 	numPostImage = 2
 )
+
+type UserPost struct {
+	models.User      `boil:"users,bind"`
+	models.Post      `boil:"posts,bind"`
+	models.PostImage `boil:"post_images,bind"`
+}
 
 func main() {
 	dsn := fmt.Sprintf(
@@ -48,15 +56,20 @@ func main() {
 		log.Fatalf("failed to begin tx: %v", err)
 	}
 
+	log.Printf("start insert users")
+	start := time.Now()
 	var testUsers models.UserSlice
 	for i := 0; i < numUser; i++ {
 		testUser := models.User{ID: i + 1, Username: fmt.Sprintf("test_%d", i)}
 		testUsers = append(testUsers, &testUser)
 	}
 	if _, err := testUsers.InsertAll(context.Background(), tx, boil.Infer()); err != nil {
-		log.Fatalf("failed to insert user: %v", err)
+		log.Fatalf("failed to insert users: %v", err)
 	}
+	log.Printf("insert user elapsed: %v", time.Since(start))
 
+	log.Printf("start insert posts")
+	start = time.Now()
 	var testPosts models.PostSlice
 	for iUser, testUser := range testUsers {
 		for iPost := 0; iPost < numPost; iPost++ {
@@ -67,7 +80,10 @@ func main() {
 	if _, err := testPosts.InsertAllByPage(context.Background(), tx, boil.Infer()); err != nil {
 		log.Fatalf("failed to insert post: %v", err)
 	}
+	log.Printf("insert post elapsed: %v", time.Since(start))
 
+	log.Printf("start insert postImages")
+	start = time.Now()
 	var testPostImages models.PostImageSlice
 	for iPost, testPost := range testPosts {
 		for iPostImage := 0; iPostImage < numPostImage; iPostImage++ {
@@ -78,10 +94,43 @@ func main() {
 	if _, err := testPostImages.InsertAllByPage(context.Background(), tx, boil.Infer()); err != nil {
 		log.Fatalf("failed to insert postImage: %v", err)
 	}
+	log.Printf("insert postImage elapsed: %v", time.Since(start))
 
 	if err := tx.Commit(); err != nil {
 		log.Fatalf("failed to commit tx: %v", err)
 	}
+
+	// =====================
+	// Fetch(By Load)
+	// =====================
+	start = time.Now()
+	_, err = models.Users(
+		models.UserWhere.ID.GTE(100),
+		models.UserWhere.ID.LT(200),
+		qm.Load(models.UserRels.Posts),
+		qm.Load(models.UserRels.Posts+"."+models.PostRels.PostImages),
+	).All(context.Background(), db)
+	if err != nil {
+		log.Fatalf("failed to fetch userAndPost: %v", err)
+	}
+	log.Printf("[Load] elapsed: %v", time.Since(start))
+
+	// =====================
+	// Fetch(By JOIN)
+	// =====================
+	start = time.Now()
+	var userPosts []UserPost
+	if err := models.NewQuery(
+		qm.Select("users.*", "posts.*", "post_images.*"),
+		qm.From("users"),
+		qm.InnerJoin("posts on posts.user_id = users.id"),
+		qm.InnerJoin("post_images on post_images.post_id = posts.id"),
+		models.UserWhere.ID.GTE(100),
+		models.UserWhere.ID.LT(200),
+	).Bind(context.Background(), db, &userPosts); err != nil {
+		log.Fatalf("failed to fetch userAndPost: %v", err)
+	}
+	log.Printf("[JOIN] elapsed: %v", time.Since(start))
 }
 
 func cleanup(ctx context.Context, db *sql.DB) error {
