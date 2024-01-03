@@ -67,5 +67,6 @@ go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-mysql@latest
 ### SQLBoilerでモデルコードの生成
 
 ```shell
+cp db/sqlboiler.toml sqlboiler.toml && sed -i -e "s|<GOPATH>|$(go env GOPATH)|g" sqlboiler.toml
 sqlboiler mysql 
 ```

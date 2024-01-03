@@ -1,0 +1,17 @@
+templates = [
+    "<GOPATH>/pkg/mod/github.com/volatiletech/sqlboiler/v4@v4.15.0/templates/main", # sqlboilerのテンプレートディレクトリ
+    "<GOPATH>/pkg/mod/github.com/volatiletech/sqlboiler/v4@v4.15.0/templates/test",
+    "templates",
+]
+
+wipe = true
+no-tests = true
+
+[mysql]
+dbname = "sns"
+host = "localhost"
+port = 3306
+user = "root"
+pass = "password"
+sslmode = "false"
+blacklist = ["goose_db_version"]
