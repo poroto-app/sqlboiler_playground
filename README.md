@@ -1,3 +1,28 @@
+## データ構造
+
+```mermaid
+erDiagram
+    USERS ||--o{ POSTS: "has"
+    POSTS ||--o{ POST_IMAGES: "has"
+
+    USERS {
+        int id PK "Primary Key"
+        varchar username "User Name"
+    }
+
+    POSTS {
+        int id PK "Primary Key"
+        int user_id FK "Foreign Key to USERS.id"
+        text content "Post Content"
+    }
+
+    POST_IMAGES {
+        int id PK "Primary Key"
+        int post_id FK "Foreign Key to POSTS.id"
+        varchar image_url "Image URL"
+    }
+```
+
 ## 環境構築
 
 ### Databaseを起動
