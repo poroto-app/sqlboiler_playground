@@ -1,7 +1,7 @@
 templates = [
     "<GOPATH>/pkg/mod/github.com/volatiletech/sqlboiler/v4@v4.15.0/templates/main", # sqlboilerのテンプレートディレクトリ
     "<GOPATH>/pkg/mod/github.com/volatiletech/sqlboiler/v4@v4.15.0/templates/test",
-    "templates",
+    "db/extensions/templates/boilv4/mysql",
 ]
 
 wipe = true

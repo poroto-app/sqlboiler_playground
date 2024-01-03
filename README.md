@@ -64,6 +64,13 @@ go install github.com/volatiletech/sqlboiler/v4@latest
 go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-mysql@latest
 ````
 
+### SQLBoilerの拡張テンプレートを追加
+デフォルトのSQLBoilerにはBulk操作を行うための関数が含まれていないため、拡張テンプレートを追加する必要があります。
+```shell
+git submodule add --name "db/extensions"  https://github.com/tiendc/sqlboiler-extensions.git "db/extensions"
+git submodule update --init
+```
+
 ### SQLBoilerでモデルコードの生成
 
 ```shell
