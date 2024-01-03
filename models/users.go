@@ -1184,3 +1184,75 @@ func UserExists(ctx context.Context, exec boil.ContextExecutor, iD int) (bool, e
 func (o *User) Exists(ctx context.Context, exec boil.ContextExecutor) (bool, error) {
 	return UserExists(ctx, exec, o.ID)
 }
+
+// InsertAll inserts all rows with the specified column values, using an executor.
+func (o UserSlice) InsertAll(ctx context.Context, exec boil.ContextExecutor, columns boil.Columns) (int64, error) {
+	if len(o) == 0 {
+		return 0, nil
+	}
+
+	var sql string
+	vals := []interface{}{}
+	for i, row := range o {
+		if !boil.TimestampsAreSkipped(ctx) {
+			currTime := time.Now().In(boil.GetLocation())
+			if queries.MustTime(row.CreatedAt).IsZero() {
+				queries.SetScanner(&row.CreatedAt, currTime)
+			}
+			if queries.MustTime(row.UpdatedAt).IsZero() {
+				queries.SetScanner(&row.UpdatedAt, currTime)
+			}
+		}
+
+		if err := row.doBeforeInsertHooks(ctx, exec); err != nil {
+			return 0, err
+		}
+
+		wl, _ := columns.InsertColumnSet(
+			userAllColumns,
+			userColumnsWithDefault,
+			userColumnsWithoutDefault,
+			queries.NonZeroDefaultSet(userColumnsWithDefault, row),
+		)
+		if i == 0 {
+			sql = "INSERT INTO `users` " + "(`" + strings.Join(wl, "`,`") + "`)" + " VALUES "
+		}
+		sql += strmangle.Placeholders(dialect.UseIndexPlaceholders, len(wl), len(vals)+1, len(wl))
+		if i != len(o)-1 {
+			sql += ","
+		}
+		valMapping, err := queries.BindMapping(userType, userMapping, wl)
+		if err != nil {
+			return 0, err
+		}
+
+		value := reflect.Indirect(reflect.ValueOf(row))
+		vals = append(vals, queries.ValuesFromMapping(value, valMapping)...)
+	}
+
+	if boil.IsDebug(ctx) {
+		writer := boil.DebugWriterFrom(ctx)
+		fmt.Fprintln(writer, sql)
+		fmt.Fprintln(writer, vals)
+	}
+
+	result, err := exec.ExecContext(ctx, sql, vals...)
+	if err != nil {
+		return 0, errors.Wrap(err, "models: unable to insert all from user slice")
+	}
+
+	rowsAff, err := result.RowsAffected()
+	if err != nil {
+		return 0, errors.Wrap(err, "models: failed to get rows affected by insertall for users")
+	}
+
+	if len(userAfterInsertHooks) != 0 {
+		for _, obj := range o {
+			if err := obj.doAfterInsertHooks(ctx, exec); err != nil {
+				return 0, err
+			}
+		}
+	}
+
+	return rowsAff, nil
+}
